@@ -8,7 +8,7 @@ int main()
     // We create the  shape	
 	sf::ConvexShape boid;
 	boid.setPointCount(3); //3 to be a triangle
-	boid.setPoint(0, sf::Vector2f(10.0f, 0.0f)); //This numbers allows the center of the triangle be the same as he sprite center
+	boid.setPoint(0, sf::Vector2f(10.0f, 0.0f)); //This numbers allows the center of the triangle be the same as the sprite center
 	boid.setPoint(1, sf::Vector2f(-10.0f, 7.5f));
 	boid.setPoint(2, sf::Vector2f(-10.0f, -7.5f));
 
