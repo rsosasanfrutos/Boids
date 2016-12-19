@@ -1,28 +1,23 @@
-#include <SFML/Graphics.hpp>
-#include <stdio.h>
-#include <iostream>
-#include <tgmath.h>
-#include <math.h>
-#include <errno.h>
-#include <fenv.h>
-#include <vector>
 
-void createBoid(sf::ConvexShape & boid_name);
-void loopedWorld(sf::ConvexShape & boid);
-void moveRandomly(sf::ConvexShape & boid, sf::Vector2f velocity);
+#include "Koan.h"
+//#include "Boid.cpp"
 
-using namespace std;
-
-#define width 500
-#define height 300
-#define degree2radian 0.01745329252
-
-int main()
-{
+int main(){
 	sf::RenderWindow window(sf::VideoMode(width, height), "Flocking");
-	vector<sf::ConvexShape> boids;
+	std::vector<Boid> boids;
+	std::vector<sf::ConvexShape> foods;
+	std::vector<std::vector<Point> > map (width + 1, std::vector<Point>(height + 1, Point(EMPTY, 0)));
+	for(int i = 0; i < width; i++){
+		map[i][0] = Point(WALL, 0);
+		map[i][height] = Point(WALL,0);
+	}
+	for(int j = 0; j < height; j++){
+		map[0][j] = Point(WALL,0);
+		map[width][j] = Point(WALL,0);
+	}
 
 	while (window.isOpen()){
+		Mat img_map(height, width, CV_8UC3, Scalar(0,0,0));
 		sf::Event event;
 		while (window.pollEvent(event)){
 			switch (event.type){
@@ -33,32 +28,17 @@ int main()
 
 				// key pressed
 			case sf::Event::KeyPressed:
-				/*
-			    // Move or rotate with the arrows
-				if (event.key.code == sf::Keyboard::Up)
-				{
-					velocity_final=velocity;
-					boids[i].move(velocity_final.x, velocity_final.y);
-				}
-				if (event.key.code == sf::Keyboard::Down)
-				{
-					velocity_final = -velocity;
-					boids[i].move(velocity_final.x, velocity_final.y);
-				}
-				if (event.key.code == sf::Keyboard::Left)
-				{
-					boids[i].rotate(-1);
-
-				}
-				if (event.key.code == sf::Keyboard::Right)
-				{
-					boids[i].rotate(1);
-				}
-				*/
-				if (event.key.code == sf::Keyboard::Space){
-					sf::ConvexShape boid;
+				if (event.key.code == sf::Keyboard::Up){
+					Boid boid;
 					createBoid(boid);
 					boids.push_back(boid);
+				} else if (event.key.code == sf::Keyboard::Left){
+					sf::ConvexShape food;
+					createFood(food);
+					foods.push_back(food);
+					map[food.getPosition().x][food.getPosition().y] = Point(FOOD,0);
+				} else if (event.key.code == sf::Keyboard::Down){
+					boids.pop_back();
 				}
 				break;
 
@@ -73,9 +53,24 @@ int main()
 			loopedWorld(boids[i]);
 
 			// Make the boid move randomly
-			float rotation = boids[i].getRotation() * degree2radian;  //We take into account the rotation to move correctly
-			sf::Vector2f velocity(cosf(rotation) * 0.05, sinf(rotation) * 0.05);
-			moveRandomly(boids[i], velocity);
+			Point v1 = lookForFriends(boids[i], map, img_map);
+			Point v2 = giveMeSpace(boids[i], map, img_map);
+			Point v3 = uniformVel(boids, map, i);
+			cout << v1 << ", " << v2 << ", " << v3 << endl;
+			Point nVelocity (boids[i].getVelocityX() + v1.x + v2.x + v3.x,
+							boids[i].getVelocityY() + v1.y + v2.y + v3.y);
+			boids[i].setVelocity(nVelocity.x / 2.0, nVelocity.y / 2.0);
+			float rot = atan2(nVelocity.y, nVelocity.x) * radian2degree;
+			boids[i].setRotation(rot);
+			map[cvRound(boids[i].getPosition().x)][cvRound(boids[i].getPosition().y)] = Point(EMPTY, 0);
+			boids[i].move(nVelocity.x / 2.0, nVelocity.y / 2.0);
+			boids[i].setPosition((float)cvRound(boids[i].getPosition().x), (float)cvRound(boids[i].getPosition().y));
+			cout << nVelocity << endl;
+			printf("Pos: [%f, %f]",  boids[i].getPosition().x,  boids[i].getPosition().y);
+//			cout << "Pos: [" << boids[i].getPosition().x << ", " << boids[i].getPosition().y << "]" << endl;
+			loopedWorld(boids[i]);
+			map[cvRound(boids[i].getPosition().x)][cvRound(boids[i].getPosition().y)] = Point(FRIEND, i);
+
 		}
 
 		//update the boid position
@@ -83,55 +78,29 @@ int main()
 		for (int i = 0; i < (int)boids.size(); i++){
 			window.draw(boids[i]);
 		}
+		for (int i = 0; i < (int)foods.size(); i++){
+			if (map[foods[i].getPosition().x][foods[i].getPosition().y].x != FOOD){
+				foods.erase(foods.begin() + i);
+			}
+			window.draw(foods[i]);
+		}
+		//		for (int i = 0; i < width; i++){
+		//			for (int j = 0; j < height; j++){
+		//				if (map[i][j] != EMPTY){
+		//					std::cout << "Cell " << i << ", " << j << ": " << map[i][j] << std::endl;
+		//				} // else std::cout << ".";
+		//			}
+		////			std::cout << std::endl;
+		//		}
 		window.display();
+		imshow("Mapa", img_map);
+//		waitKey(1);
+		//		char a;
+		//		std::cin >> a;
+		cout << "Fin" << endl << endl << endl;
+		waitKey(500);
 	}
 	return 0;
 }
 
-void createBoid(sf::ConvexShape & boid_name){
-	// Create the  shape
-	boid_name.setPointCount(3); //3 to be a triangle
-	boid_name.setPoint(0, sf::Vector2f(10.0f, 0.0f)); //This numbers allows the center of the triangle be the same as the sprite center
-	boid_name.setPoint(1, sf::Vector2f(-10.0f, 7.5f));
-	boid_name.setPoint(2, sf::Vector2f(-10.0f, -7.5f));
 
-	// Give a random color
-	int randomR = rand() % 255;
-	int randomG = rand() % 255;
-	int randomB = rand() % 255;
-	sf::Color random_color (randomR, randomG, randomB, 255);
-	boid_name.setFillColor(random_color);
-	boid_name.setOutlineColor(sf::Color (255, 255, 255, 255));
-	boid_name.setOutlineThickness(1);
-
-	// Give a random position
-	float randomx = (float)(rand() % width);
-	float randomy = (float)(rand() % height);
-	boid_name.setPosition(randomx, randomy);
-}
-
-void loopedWorld(sf::ConvexShape & boid){
-	// Keep the boid in a correct horizontal position
-	if (boid.getPosition().x > width) boid.setPosition(boid.getPosition().x - width, boid.getPosition().y);
-	if (boid.getPosition().x < 0) boid.setPosition(boid.getPosition().x + width, boid.getPosition().y);
-
-	// Keep the boid in a correct vertical position
-	if (boid.getPosition().y > height) boid.setPosition(boid.getPosition().x, boid.getPosition().y - height);
-	if (boid.getPosition().y < 0) boid.setPosition(boid.getPosition().x, boid.getPosition().y + height);
-}
-
-/*
- * Given the boid velocity, there is a 70% probability to continue with
- * the same direction there is a 15% proability to turn left and
- * a 15% probability to turn right.
- */
-void moveRandomly(sf::ConvexShape & boid, sf::Vector2f velocity){
-	int keep_mov = (int)(rand() % 100);
-	if (keep_mov > 85){
-		boid.rotate(1);
-	} else if (keep_mov > 70){
-		boid.rotate(-1);
-	} else {
-		boid.move(velocity.x, velocity.y);
-	}
-}
