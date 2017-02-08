@@ -7,14 +7,15 @@ int main(){
 	std::vector<Boid> boids;
 	std::vector<sf::ConvexShape> foods;
 	std::vector<std::vector<Point> > map (width + 1, std::vector<Point>(height + 1, Point(EMPTY, 0)));
-	for(int i = 0; i < width; i++){
-		map[i][0] = Point(WALL, 0);
-		map[i][height] = Point(WALL,0);
-	}
-	for(int j = 0; j < height; j++){
-		map[0][j] = Point(WALL,0);
-		map[width][j] = Point(WALL,0);
-	}
+
+	//	for(int i = 0; i < width; i++){
+	//		map[i][0] = Point(WALL, 0);
+	//		map[i][height] = Point(WALL,0);
+	//	}
+	//	for(int j = 0; j < height; j++){
+	//		map[0][j] = Point(WALL,0);
+	//		map[width][j] = Point(WALL,0);
+	//	}
 
 	while (window.isOpen()){
 		Mat img_map(height, width, CV_8UC3, Scalar(0,0,0));
@@ -28,6 +29,9 @@ int main(){
 
 				// key pressed
 			case sf::Event::KeyPressed:
+				if (event.key.code == sf::Keyboard::P){
+					cin.get();
+				}
 				if (event.key.code == sf::Keyboard::Up){
 					Boid boid;
 					createBoid(boid);
@@ -38,6 +42,8 @@ int main(){
 					foods.push_back(food);
 					map[food.getPosition().x][food.getPosition().y] = Point(FOOD,0);
 				} else if (event.key.code == sf::Keyboard::Down){
+					Boid last_boid = boids.back();
+					map[last_boid.getPosition().x][last_boid.getPosition().y].x = EMPTY;
 					boids.pop_back();
 				}
 				break;
@@ -53,24 +59,31 @@ int main(){
 			loopedWorld(boids[i]);
 
 			// Make the boid move randomly
-			Point v1 = lookForFriends(boids[i], map, img_map);
-			Point v2 = giveMeSpace(boids[i], map, img_map);
-			Point v3 = uniformVel(boids, map, i);
-			cout << v1 << ", " << v2 << ", " << v3 << endl;
-			Point nVelocity (boids[i].getVelocityX() + v1.x + v2.x + v3.x,
-							boids[i].getVelocityY() + v1.y + v2.y + v3.y);
-			boids[i].setVelocity(nVelocity.x / 2.0, nVelocity.y / 2.0);
+			Point2f rand = moveRandomly(boids[i]);
+			Point2f v1 = lookForFriends(boids[i], map, img_map);
+			Point2f v2 = giveMeSpace(boids[i], map, img_map);
+			Point2f v3 = uniformVel(boids, map, i);
+			//			cout << v1 << ", " << v2 << ", " << v3 << endl;
+			//			Point nVelocity (mod_vel + v1.x /*+ v2.x + v3.x*/,
+			//					mod_vel + v1.y /*+ v2.y + v3.y*/);
+
+
+			Point2f nVelocity (rand.x + v1.x + v2.x + v3.x, rand.y + v1.y + v2.y + v3.y);
+
+			boids[i].setVelocity(cvRound(nVelocity.x), cvRound(nVelocity.y));
+//			cout << boids[i].getRotation() << " : " ;
 			float rot = atan2(nVelocity.y, nVelocity.x) * radian2degree;
+//			cout << rot << endl;
 			boids[i].setRotation(rot);
+			//
 			map[cvRound(boids[i].getPosition().x)][cvRound(boids[i].getPosition().y)] = Point(EMPTY, 0);
-			boids[i].move(nVelocity.x / 2.0, nVelocity.y / 2.0);
+			boids[i].move(nVelocity.x, nVelocity.y);
 			boids[i].setPosition((float)cvRound(boids[i].getPosition().x), (float)cvRound(boids[i].getPosition().y));
-			cout << nVelocity << endl;
-			printf("Pos: [%f, %f]",  boids[i].getPosition().x,  boids[i].getPosition().y);
-//			cout << "Pos: [" << boids[i].getPosition().x << ", " << boids[i].getPosition().y << "]" << endl;
+			//			cout << nVelocity << endl;
+			//			printf("Pos: [%f, %f]",  boids[i].getPosition().x,  boids[i].getPosition().y);
+			//			cout << "Pos: [" << boids[i].getPosition().x << ", " << boids[i].getPosition().y << "]" << endl;
 			loopedWorld(boids[i]);
 			map[cvRound(boids[i].getPosition().x)][cvRound(boids[i].getPosition().y)] = Point(FRIEND, i);
-
 		}
 
 		//update the boid position
@@ -78,6 +91,7 @@ int main(){
 		for (int i = 0; i < (int)boids.size(); i++){
 			window.draw(boids[i]);
 		}
+
 		for (int i = 0; i < (int)foods.size(); i++){
 			if (map[foods[i].getPosition().x][foods[i].getPosition().y].x != FOOD){
 				foods.erase(foods.begin() + i);
@@ -93,12 +107,20 @@ int main(){
 		////			std::cout << std::endl;
 		//		}
 		window.display();
-		imshow("Mapa", img_map);
-//		waitKey(1);
+		//		imshow("Mapa", img_map);
+		//		waitKey(1);
 		//		char a;
 		//		std::cin >> a;
-		cout << "Fin" << endl << endl << endl;
-		waitKey(500);
+		//		cout << "Fin" << endl << endl << endl;
+//		for (int i = 0; i < (int)width; i++){
+//			for (int j = 0; j < (int)height; j++){
+//				if (map[i][j].x == 1)
+//					cout << i << ", " << j << endl;
+//			}
+//		}
+//		cout << "-" << endl;
+		waitKey(10);
+		//		cin.get();
 	}
 	return 0;
 }

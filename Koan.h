@@ -26,9 +26,9 @@
 #define radian2degree 57.2958279
 #define PI 3.14159
 
-#define myopia 15
-#define comfort_dis 40
-#define mod_vel 1
+#define myopia 100
+#define comfort_dis 10
+#define mod_vel 5
 
 #define EMPTY 0
 #define FRIEND 1
@@ -104,14 +104,14 @@ void createBoid(Boid & boid_name){
 	float rotation = boid_name.getRotation() * degree2radian;  //We take into account the rotation to move correctly
 	Point2f velocity(cosf(rotation) * mod_vel, sinf(rotation) * mod_vel);
 	boid_name.setVelocity(velocity.x, velocity.y);
-	cout << "Created boid, vel: " << velocity.x << ", " << velocity.y << endl;
+	//	cout << "Created boid, vel: " << velocity.x << ", " << velocity.y << endl;
 	//	waitKey(0);
 }
 
 void createFood(sf::ConvexShape & food_name){
 	// Create the  shape
-	food_name.setPointCount(4); //4 to be a triangle
-	food_name.setPoint(0, sf::Vector2f( 5.0f,  5.0f)); //This numbers allows the center of the triangle be the same as the sprite center
+	food_name.setPointCount(4);
+	food_name.setPoint(0, sf::Vector2f( 5.0f,  5.0f));
 	food_name.setPoint(1, sf::Vector2f(-5.0f,  5.0f));
 	food_name.setPoint(2, sf::Vector2f(-5.0f, -5.0f));
 	food_name.setPoint(3, sf::Vector2f( 5.0f, -5.0f));
@@ -183,18 +183,20 @@ void avoidWalls(sf::ConvexShape & boid, std::vector<std::vector<Point> > & map){
 }
  */
 
-Point lookForFriends(Boid & boid, std::vector<std::vector<Point> > & map, Mat & im_map){
+Point2f lookForFriends(Boid & boid, std::vector<std::vector<Point> > & map, Mat & im_map){
 	int x = boid.getPosition().x;
 	int y = boid.getPosition().y;
-	Point center (0, 0);
+	Point2f center (0, 0);
 	int found_friends = 0;
 
+	//	for (int i = 0; i < width; i++){
+	//			for (int j = 0; j < height; j++){
 	for (int i = - myopia; i < myopia; i++){
 		for (int j = - myopia; j < myopia; j++){
 			if (j != 0 || i != 0){
 				Point pos = keepInside(x+i, y+j);
 				if (map[pos.x][pos.y].x == FRIEND){
-					printf("Found friend: [%i, %i]", pos.x, pos.y);
+					//					printf("Found friend: [%i, %i]", pos.x, pos.y);
 					center.x += pos.x;
 					center.y += pos.y;
 					found_friends ++;
@@ -205,16 +207,25 @@ Point lookForFriends(Boid & boid, std::vector<std::vector<Point> > & map, Mat & 
 	if (found_friends != 0){
 		center.x /= found_friends;
 		center.y /= found_friends;
+
+		float angle = atan2(center.y - y, center.x - x);
+		float vel_x = mod_vel * cos(angle);
+		float vel_y = mod_vel * sin(angle);
+		return Point2f(vel_x, vel_y);
+
+	} else {
+		return Point2f(0,0);
 	}
-	cout << "Look for friends!" << endl;
-	Point dif_pos = keepInside(center.x - x, center.y - y);
-	return Point(dif_pos.x / 10.0, dif_pos.y / 10.0);
+	//	cout << "Look for friends!" << endl;
+
+	//	Point dif_pos = keepInside(center.x - x, center.y - y) * mod_vel;
+	//	return Point(dif_pos.x / 10.0, dif_pos.y / 10.0);
 }
 
-Point giveMeSpace(Boid & boid, std::vector<std::vector<Point> > & map, Mat & im_map){
+Point2f giveMeSpace(Boid & boid, std::vector<std::vector<Point> > & map, Mat & im_map){
 	int x = boid.getPosition().x;
 	int y = boid.getPosition().y;
-	Point center (0, 0);
+	Point2f center (0, 0);
 	bool encontrado = false;
 
 	for (int i = - myopia; i < myopia; i++){
@@ -225,34 +236,34 @@ Point giveMeSpace(Boid & boid, std::vector<std::vector<Point> > & map, Mat & im_
 
 				if (map[pos.x][pos.y].x != EMPTY && map[pos.x][pos.y].x != FOOD){
 					encontrado = true;
-					printf("Found intruder: [%i, %i]. I am in [%i, %i]\n", pos.x, pos.y, x, y);
+					//					printf("Found intruder: [%i, %i]. I am in [%i, %i]\n", pos.x, pos.y, x, y);
 					float dis = distanceP2P(Point(x,y), pos);
-					printf("The distance between us is %f\n", dis);
+					//					printf("The distance between us is %f\n", dis);
 					if (dis < comfort_dis){
 						center.x -= (pos.x - x) ;
 						center.y -= (pos.y - y) ;
-						printf("[%i, %i]", center.x, center.y);
+						//						printf("[%i, %i]", center.x, center.y);
 					}
 				}
 			}
 		}
 	}
-//	waitKey();
-	cout << "Give me space!" << endl;
+	//	waitKey();
+	//	cout << "Give me space!" << endl;
 	if (encontrado)
-		return keepInside((x - center.x) / 10, (y - center.y) / 10);
+		return keepInside(center.x, center.y);
 	else
 		return center;
 }
 
-Point uniformVel(vector<Boid> & boids, std::vector<std::vector<Point> > & map, int i){
+Point2f uniformVel(vector<Boid> & boids, std::vector<std::vector<Point> > & map, int i){
 	Boid boid = boids[i];
 	int x = boid.getPosition().x;
 	int y = boid.getPosition().y;
-	Point velocity = Point(boid.getVelocityX(), boid.getVelocityY());
+	Point2f velocity = Point(boid.getVelocityX(), boid.getVelocityY());
 
 	int found_friends = 0;
-	Point uni_vel(0, 0);
+	Point2f uni_vel(0, 0);
 
 	for (int i = - myopia; i < myopia; i++){
 		for (int j = - myopia; j < myopia; j++){
@@ -273,9 +284,12 @@ Point uniformVel(vector<Boid> & boids, std::vector<std::vector<Point> > & map, i
 	if (found_friends != 0){
 		velocity.x /= found_friends;
 		velocity.y /= found_friends;
+
+		return Point2f(boid.getVelocityX() - velocity.x, boid.getVelocityY() - velocity.y)/20;
+	} else {
+		return Point2f(0,0);
 	}
-	cout << "Uniform velocity" << endl;
-	return Point(uni_vel.x - velocity.x, uni_vel.y - velocity.y)/8;
+	//	cout << "Uniform velocity" << endl;
 }
 
 /*
@@ -283,21 +297,21 @@ Point uniformVel(vector<Boid> & boids, std::vector<std::vector<Point> > & map, i
  * the same direction there is a 15% proability to turn left and
  * a 15% probability to turn right.
  */
-void moveRandomly(Boid & boid, std::vector<std::vector<Point> > & map, int nBoid){
-	float rotation = boid.getRotation() * degree2radian;  //We take into account the rotation to move correctly
+Point2f moveRandomly(Boid & boid){
+	float rotation = boid.getRotation();  //We take into account the rotation to move correctly
+//	cout << rotation << " : ";
+	int keep_mov = (int)(rand() % 100);
+	if (keep_mov > 80){
+		rotation = rotation + 1.0;
+	} else if (keep_mov > 90){
+		rotation = rotation - 1.0;
+	}
+//	cout << rotation << " : ";
+	rotation = rotation * degree2radian;
+//	cout << rotation << endl;
 	sf::Vector2f velocity(cosf(rotation) * mod_vel, sinf(rotation) * mod_vel);
 
-	int keep_mov = (int)(rand() % 100);
-	if (keep_mov > 94){
-		boid.rotate(1);
-	} else if (keep_mov > 97){
-		boid.rotate(-1);
-	} else {
-		map[boid.getPosition().x][boid.getPosition().y] = Point(EMPTY, 0);
-		boid.move(velocity.x, velocity.y);
-		loopedWorld(boid);
-		map[boid.getPosition().x][boid.getPosition().y] = Point(FRIEND, nBoid);
-	}
+	return Point2f(velocity.x, velocity.y);
 }
 
 
