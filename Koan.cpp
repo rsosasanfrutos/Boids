@@ -77,6 +77,7 @@ int main(){
 		}
 
 		window.display();
+		waitKey(10);
 	}
 	return 0;
 }

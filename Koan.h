@@ -20,15 +20,15 @@
 #include <opencv2/imgcodecs/imgcodecs.hpp>
 #include "Boid.cpp"
 
-#define width 800
-#define height 500
+#define width 1200
+#define height 800
 #define degree2radian 0.01745329252
 #define radian2degree 57.2958279
 #define PI 3.14159
 
 #define myopia 100
 #define comfort_dis 30
-#define mod_vel 2
+#define mod_vel 15
 
 #define EMPTY 0
 #define FRIEND 1
@@ -60,6 +60,7 @@ float norm_angle(float angle){
 	}
 	return norm;
 }
+
 void loopedWorld(Boid & boid){
 	// Keep the boid in a correct horizontal position
 	if (boid.getPosition().x >= width) boid.setPosition(boid.getPosition().x - width, boid.getPosition().y);
@@ -96,10 +97,10 @@ void createBoid(Boid & boid_name){
 	boid_name.setPoint(2, sf::Vector2f(-10.0f, -7.5f));
 
 	// Give a random color
-//	int randomR = rand() % 255;
-//	int randomG = rand() % 255;
-//	int randomB = rand() % 255;
-	sf::Color random_color (0, 0, 255, 255);
+	int randomR = rand() % 255;
+	int randomG = rand() % 255;
+	int randomB = rand() % 255;
+	sf::Color random_color (randomR, randomG, randomB, 255);
 	boid_name.setFillColor(random_color);
 	boid_name.setOutlineColor(sf::Color (255, 255, 255, 255));
 	boid_name.setOutlineThickness(1);
@@ -156,7 +157,7 @@ Point2f lookForFriends(Boid & boid, std::vector<std::vector<Point> > & map, Mat 
 						mass_center.x += x+i;
 						mass_center.y += y+j;
 						found_friends ++;
-						boid.setFillColor(sf::Color(0, 10*found_friends, 255 - 10*found_friends, 255));
+//						boid.setFillColor(sf::Color(0, 10*found_friends, 255 - 10*found_friends, 255));
 					}
 //				}
 			}
@@ -196,8 +197,10 @@ Point2f giveMeSpace(Boid & boid, std::vector<std::vector<Point> > & map, Mat & i
 					float dis = distanceP2P(Point(x,y), pos);
 					//					printf("The distance between us is %f\n", dis);
 					if (dis < comfort_dis){
-						center.x -= i ;
-						center.y -= j ;
+						float repulsion = comfort_dis - dis;
+						float angle = norm_angle(atan2(j,i));
+						center.x -= repulsion * cos(angle);
+						center.y -= repulsion * sin(angle);
 						//						printf("[%i, %i]", center.x, center.y);
 					}
 				}
@@ -207,7 +210,7 @@ Point2f giveMeSpace(Boid & boid, std::vector<std::vector<Point> > & map, Mat & i
 	//	waitKey();
 	//	cout << "Give me space!" << endl;
 	if (encontrado)
-		return Point2f(center.x / 5, center.y / 5);
+		return Point2f(center.x / 2, center.y / 2);
 	else
 		return center;
 }
@@ -258,12 +261,12 @@ Point2f uniformVel(vector<Boid> & boids, std::vector<std::vector<Point> > & map,
 Point2f moveRandomly(Boid & boid){
 	float rotation = boid.getRotation();  //We take into account the rotation to move correctly
 	//	cout << rotation << " : ";
-	int keep_mov = (int)(rand() % 100);
-	if (keep_mov > 80){
-		rotation = rotation + 1.0;
-	} else if (keep_mov > 90){
-		rotation = rotation - 1.0;
-	}
+//	int keep_mov = (int)(rand() % 100);
+//	if (keep_mov > 80){
+//		rotation = rotation + 1.0;
+//	} else if (keep_mov > 90){
+//		rotation = rotation - 1.0;
+//	}
 	//	cout << rotation << " : ";
 	rotation = rotation * degree2radian;
 	//	cout << rotation << endl;
