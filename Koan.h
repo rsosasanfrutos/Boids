@@ -9,11 +9,15 @@
 #define KOAN_H_
 
 //#include <SFML/Graphics.hpp>
+#include <SDKDDKVer.h>
+
+#include <tchar.h>
+
 #include <stdio.h>
 #include <iostream>
 #include <math.h>
 #include <vector>
-#include "opencv/cv.hpp"
+#include <windows.h>
 #include "opencv2/opencv.hpp"
 #include <opencv2/core/core.hpp>				//basic building blocks
 #include <opencv2/highgui/highgui.hpp>
@@ -71,6 +75,16 @@ void loopedWorld(Boid & boid){
 	if (boid.getPosition().y < 0) boid.setPosition(boid.getPosition().x, boid.getPosition().y + height);
 }
 
+void loopedWorldEnemy(sf::CircleShape & enemy) {
+	// Keep the boid in a correct horizontal position
+	if (enemy.getPosition().x >= width) enemy.setPosition(enemy.getPosition().x - width, enemy.getPosition().y);
+	if (enemy.getPosition().x < 0) enemy.setPosition(enemy.getPosition().x + width, enemy.getPosition().y);
+
+	// Keep the boid in a correct vertical position
+	if (enemy.getPosition().y >= height) enemy.setPosition(enemy.getPosition().x, enemy.getPosition().y - height);
+	if (enemy.getPosition().y < 0) enemy.setPosition(enemy.getPosition().x, enemy.getPosition().y + height);
+}
+
 Point keepInside(int ax, int ay){
 	Point b(0,0);
 
@@ -118,24 +132,31 @@ void createBoid(Boid & boid_name){
 	//	waitKey(0);
 }
 
-void createFood(sf::ConvexShape & food_name){
+void createenemy(sf::CircleShape & enemy){
 	// Create the  shape
-	food_name.setPointCount(4);
-	food_name.setPoint(0, sf::Vector2f( 5.0f,  5.0f));
-	food_name.setPoint(1, sf::Vector2f(-5.0f,  5.0f));
-	food_name.setPoint(2, sf::Vector2f(-5.0f, -5.0f));
-	food_name.setPoint(3, sf::Vector2f( 5.0f, -5.0f));
+	enemy.setRadius(5);
+	enemy.setFillColor(sf::Color::Red);
+	enemy.setOutlineColor(sf::Color::White);
+	enemy.setOutlineThickness(1);
 
-	// Give a color
-	sf::Color green (0, 255, 0, 255);
-	food_name.setFillColor(green);
-	food_name.setOutlineColor(sf::Color (255, 255, 255, 255));
+	// Give a random position
+	float randomx = (float)(rand() % width);
+	float randomy = (float)(rand() % height);
+	enemy.setPosition(randomx, randomy);
+}
+
+void createFood(sf::CircleShape & food_name) {
+	// Create the  shape
+	food_name.setRadius(5);
+	food_name.setFillColor(sf::Color::Blue);
+	food_name.setOutlineColor(sf::Color::White);
 	food_name.setOutlineThickness(1);
 
 	// Give a random position
 	float randomx = (float)(rand() % width);
 	float randomy = (float)(rand() % height);
 	food_name.setPosition(randomx, randomy);
+
 }
 
 Point2f lookForFriends(Boid & boid, std::vector<std::vector<Point> > & map, Mat & im_map){
@@ -178,6 +199,90 @@ Point2f lookForFriends(Boid & boid, std::vector<std::vector<Point> > & map, Mat 
 	//	Point dif_pos = keepInside(center.x - x, center.y - y) * mod_vel;
 	//	return Point(dif_pos.x / 10.0, dif_pos.y / 10.0);
 }
+
+Point2f lookForEnemies(Boid & boid, std::vector<std::vector<Point> > & map, Mat & im_map) {
+	int x = boid.getPosition().x;
+	int y = boid.getPosition().y;
+	Point2f mass_center(0, 0);
+	int found_enemies = 0;
+
+	//	for (int i = 0; i < width; i++){
+	//			for (int j = 0; j < height; j++){
+	for (int i = -myopia; i < myopia; i++) {
+		for (int j = -myopia; j < myopia; j++) {
+			if (j != 0 || i != 0) {
+				//				float direction = norm_angle(atan2(y, x));
+				//				if (fabs(norm_angle(direction - norm_angle(boid.getRotation() * degree2radian))) < 100){
+				Point pos = keepInside(x + i, y + j);
+
+				if (map[pos.x][pos.y].x == ENEMY) {
+					mass_center.x += x + i;
+					mass_center.y += y + j;
+					found_enemies++;
+					//						boid.setFillColor(sf::Color(0, 10*found_friends, 255 - 10*found_friends, 255));
+				}
+				//				}
+			}
+		}
+	}
+	if (found_enemies != 0) {
+		mass_center.x /= found_enemies;
+		mass_center.y /= found_enemies;
+
+		Point2f vel(mass_center.x + x, mass_center.y + y);
+		return vel / 5.0;
+
+	}
+	else {
+		return Point2f(0, 0);
+	}
+	//	cout << "Look for friends!" << endl;
+
+	//	Point dif_pos = keepInside(center.x - x, center.y - y) * mod_vel;
+	//	return Point(dif_pos.x / 10.0, dif_pos.y / 10.0);
+}
+
+Point2f lookForFood(Boid & boid, std::vector<std::vector<Point> > & map, Mat & im_map) {
+	int x = boid.getPosition().x;
+	int y = boid.getPosition().y;
+	Point2f mass_center(0, 0);
+	int found_food = 0;
+
+	//	for (int i = 0; i < width; i++){
+	//			for (int j = 0; j < height; j++){
+	for (int i = -myopia; i < myopia; i++) {
+		for (int j = -myopia; j < myopia; j++) {
+			if (j != 0 || i != 0) {
+				//				float direction = norm_angle(atan2(y, x));
+				//				if (fabs(norm_angle(direction - norm_angle(boid.getRotation() * degree2radian))) < 100){
+				Point pos = keepInside(x + i, y + j);
+
+				if (map[pos.x][pos.y].x == FOOD) {
+					mass_center.x += x + i;
+					mass_center.y += y + j;
+					found_food=1;
+					break;
+					//						boid.setFillColor(sf::Color(0, 10*found_friends, 255 - 10*found_friends, 255));
+				}
+				//				}
+			}
+		}
+	}
+	if (found_food== 1) {
+
+		Point2f vel(mass_center.x - x, mass_center.y - y);
+		return vel / 2.0;
+
+	}
+	else {
+		return Point2f(0, 0);
+	}
+	//	cout << "Look for friends!" << endl;
+
+	//	Point dif_pos = keepInside(center.x - x, center.y - y) * mod_vel;
+	//	return Point(dif_pos.x / 10.0, dif_pos.y / 10.0);
+}
+
 
 Point2f giveMeSpace(Boid & boid, std::vector<std::vector<Point> > & map, Mat & im_map){
 	int x = boid.getPosition().x;
@@ -268,6 +373,24 @@ Point2f moveRandomly(Boid & boid){
 //		rotation = rotation - 1.0;
 //	}
 	//	cout << rotation << " : ";
+	rotation = rotation * degree2radian;
+	//	cout << rotation << endl;
+	sf::Vector2f velocity(cosf(rotation) * mod_vel, sinf(rotation) * mod_vel);
+
+	return Point2f(velocity.x, velocity.y);
+}
+
+Point2f moveRandomlyEnemy(sf::CircleShape & enemy) {
+	float rotation = enemy.getRotation();  
+	//We take into account the rotation to move correctly
+	cout << rotation << " : ";
+	int keep_mov = (int)(rand() % 100);
+	if (keep_mov > 50){
+	rotation = rotation + 1.0;
+	} else if (keep_mov > 50){
+	rotation = rotation - 1.0;
+	}
+	cout << rotation << " : ";
 	rotation = rotation * degree2radian;
 	//	cout << rotation << endl;
 	sf::Vector2f velocity(cosf(rotation) * mod_vel, sinf(rotation) * mod_vel);
