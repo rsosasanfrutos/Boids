@@ -14,9 +14,11 @@
 //#include <windows.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <iostream>
 #include <math.h>
 #include <vector>
+#include <string>
 #include "opencv2/opencv.hpp"
 #include <opencv2/core/core.hpp>				//basic building blocks
 #include <opencv2/highgui/highgui.hpp>
@@ -32,9 +34,9 @@ using namespace std;
 #define radian2degree 57.2958279
 #define PI 3.14159
 
-#define myopia 100
-#define comfort_dis 30
-#define danger_dis 50
+#define MYOPIA 100
+#define COMFORT_DIS 40
+#define DANGER_DIS 80
 #define mod_vel 12
 #define vel_max 25
 
@@ -93,13 +95,13 @@ public:
 	}
 
 	void setVelocity(float vX, float vY);
-	bool look_surroundings(std::vector<std::vector<Point> > & map, vector<Boid> & boids);
+	bool look_surroundings(std::vector<std::vector<Point> > & map, vector<Boid> & boids, int myopia);
 	void loopedWorld(void);
 	Point keepInside(int ax, int ay);
 	Point2f lookForFriends();
 	Point2f lookForFood();
-	Point2f avoidEnemies();
-	Point2f giveMeSpace();
+	Point2f avoidEnemies(int danger_dis);
+	Point2f giveMeSpace(int comfort_dis);
 	Point2f uniformVel();
 	Point2f moveRandomly();
 

@@ -1,12 +1,22 @@
 
 #include "Boid.h"
 
+#define EDIT 1
+#define edit_myopia 11
+#define edit_comfort 12
+#define edit_danger 13
+#define VIEW 2
+
 int main(){
 	sf::RenderWindow window(sf::VideoMode(width, height), "Flocking");
 	std::vector<Boid> boids;
 	std::vector<std::vector<Point> > map (width, std::vector<Point>(height, Point(EMPTY, 0)));
 	std::vector<sf::CircleShape> foods;
 	std::vector<Boid> enemies;
+	int mode = VIEW;
+	int myopia = MYOPIA;
+	int comfort_dis = COMFORT_DIS;
+	int danger_dis = DANGER_DIS;
 
 	while (window.isOpen()){
 		Mat img_map(height, width, CV_8UC3, Scalar(0,0,0));
@@ -17,7 +27,9 @@ int main(){
 			case sf::Event::Closed:
 				window.close();
 				break;
-
+			case sf::Event::MouseButtonPressed:
+				cout << "Mouse!" << endl;
+				break;
 				// key pressed
 			case sf::Event::KeyPressed:
 				if (event.key.code == sf::Keyboard::P){
@@ -58,6 +70,41 @@ int main(){
 						enemies.pop_back();
 					}
 				}
+				else if (event.key.code == sf::Keyboard::E) {
+					if (mode != VIEW) mode = VIEW;
+					else if (mode == VIEW) mode = EDIT;
+				}
+				else if (event.key.code == sf::Keyboard::M) {
+					if (mode != VIEW){
+						mode = edit_myopia;
+					}
+				}
+				else if (event.key.code == sf::Keyboard::N) {
+					if (mode != VIEW){
+						mode = edit_comfort;
+					}
+				}
+				else if (event.key.code == sf::Keyboard::B) {
+					if (mode != VIEW){
+						mode = edit_danger;
+					}
+				}
+				else if (event.key.code == sf::Keyboard::X) {
+					if (mode == edit_myopia) myopia ++;
+					else if (mode == edit_danger) danger_dis ++;
+					else if (mode == edit_comfort) comfort_dis ++;
+				}
+				else if (event.key.code == sf::Keyboard::Z) {
+					if (mode == edit_myopia) myopia --;
+					else if (mode == edit_danger) danger_dis --;
+					else if (mode == edit_comfort) comfort_dis --;
+				}
+				else if (event.key.code == sf::Keyboard::R) {
+					mode = VIEW;
+					myopia = MYOPIA;
+					comfort_dis = COMFORT_DIS;
+					danger_dis = DANGER_DIS;
+				}
 				break;
 
 			default:
@@ -68,20 +115,20 @@ int main(){
 		for (int i = 0; i < (int)boids.size(); i++){
 			// Keep the boid inside de window
 			boids[i].loopedWorld();
-			bool something_found = boids[i].look_surroundings(map, boids);
+			bool something_found = boids[i].look_surroundings(map, boids, myopia);
 			Point2f nVelocity (0,0);
 			// Make the boid move randomly
 			if (something_found){
 				Point2f v1 = boids[i].lookForFriends();
-				Point2f v2 = boids[i].giveMeSpace();
+				Point2f v2 = boids[i].giveMeSpace(comfort_dis);
 				Point2f v3 = boids[i].uniformVel();
 				Point2f v4 = boids[i].lookForFood();
-				Point2f v5 = boids[i].avoidEnemies();
+				Point2f v5 = boids[i].avoidEnemies(danger_dis);
 
-				nVelocity = boids[i].getVelocity() + v1 + v2 + v3 + v4 + v5;
+				Point2f av_vel(mod_vel*cos(boids[i].getRotation() * degree2radian), mod_vel*sin(boids[i].getRotation() * degree2radian));
+				nVelocity = /*boids[i].getVelocity()*/ av_vel + v1 + v2 + v3 + v4 + v5;
 				limitVelocity(nVelocity);
 			} else {
-				cout << "Boid " << i << " is alone." << endl;
 				nVelocity = boids[i].moveRandomly();
 			}
 
@@ -152,6 +199,26 @@ int main(){
 		for (int k = 0; k < (int)foods.size(); k++) {
 			window.draw(foods[k]);
 		}
+
+		sf::Text text;
+		sf::Font font;
+		font.loadFromFile("veramono-webfont.ttf");
+		text.setFont(font); // font is a sf::Font
+		string mode_str = "";
+		if (mode == 1) mode_str = "EDIT";
+		else if (mode == 11) mode_str = "EDIT MYOPIA";
+		else if (mode == 12) mode_str = "EDIT COMFORT DISTANCE";
+		else if (mode == 13) mode_str = "EDIT DANGER DISTANCE";
+		else if (mode == 2) mode_str = "VIEW";
+		string in_screen = "Number of boids: " + to_string((int)boids.size()) +"\nMyopia: " + to_string(myopia)
+																		+ "\nConfort distance: " + to_string(comfort_dis) + "\nDanger distance: " + to_string(danger_dis)
+																		+ "\nMode: " + mode_str;
+		text.setString(in_screen);
+		text.setCharacterSize(14); // in pixels, not points!
+		text.setColor(sf::Color::White);
+
+		// inside the main loop, between window.clear() and window.display()
+		window.draw(text);
 
 		window.display();
 

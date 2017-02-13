@@ -66,7 +66,7 @@ void Boid::setVelocity(float vX, float vY) {
 	velocity_y = vY;
 }
 
-bool Boid::look_surroundings(std::vector<std::vector<Point> > & map, vector<Boid> & boids) {
+bool Boid::look_surroundings(std::vector<std::vector<Point> > & map, vector<Boid> & boids, int myopia) {
 	int x = this->getPosition().x;
 	int y = this->getPosition().y;
 	this->friends.clear();
@@ -172,7 +172,7 @@ Point2f Boid::lookForFood() {
 	}
 }
 
-Point2f Boid::avoidEnemies(){
+Point2f Boid::avoidEnemies(int danger_dis){
 	int x = this->getPosition().x;
 	int y = this->getPosition().y;
 	Point2f center(0, 0);
@@ -196,7 +196,7 @@ Point2f Boid::avoidEnemies(){
 	}
 }
 
-Point2f Boid::giveMeSpace(){
+Point2f Boid::giveMeSpace(int comfort_dis){
 	int x = this->getPosition().x;
 	int y = this->getPosition().y;
 	Point2f center (0, 0);
@@ -244,7 +244,7 @@ Point2f Boid::uniformVel(){
 		uni_vel.y /= found_friends;
 
 		Point2f dif(uni_vel.x - this->velocity_x, uni_vel.y - this->velocity_y);
-		return dif/10;
+		return dif/2;
 	} else {
 		return Point2f(0,0);
 	}
